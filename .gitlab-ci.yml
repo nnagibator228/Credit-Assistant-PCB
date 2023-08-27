@@ -34,7 +34,7 @@ deploy-test-env-job:
     - zip ./backend/function.zip -r ${CI_PROJECT_DIR}/backend/function
     - export function_id=$(yc serverless function create --name testing --cloud-id ${cloud_id} --folder-name ${psb_testing} | yq .id)
 # Развертывание функции.
-    - yc serverless function version create --function-name testing --runtime nodejs12  --entrypoint index.handler --memory 128m --execution-timeout 10s -source-path ./backend/function.zip
+    - yc serverless function version create --function-name testing --runtime nodejs12  --entrypoint index.handler --memory 128m --execution-timeout 10s --source-path ./backend/function.zip
 # Подстановка переменных в openapi.yml backend-а
     - (cat ${CI_PROJECT_DIR}/backend/openapi.yaml.j2 | envsubst) > ./backend/openapi.yaml
 # Развертывание backend-gateway
@@ -106,7 +106,7 @@ release-job:
     - zip ./backend/function.zip -r ${CI_PROJECT_DIR}/backend/function
     - export function_id=$(yc serverless function create --name production --cloud-id ${cloud_id} --folder-name ${psb_prod} | yq .id)
 # Развертывание функции.
-    - yc serverless function version create --function-name production --runtime nodejs12  --entrypoint index.handler --memory 128m --execution-timeout 10s -source-path ./backend/function.zip
+    - yc serverless function version create --function-name production --runtime nodejs12  --entrypoint index.handler --memory 128m --execution-timeout 10s --source-path ./backend/function.zip
 # Подстановка переменных в openapi.yml backend-а
     - (cat ${CI_PROJECT_DIR}/backend/openapi.yaml.j2 | envsubst) > ./backend/openapi.yaml
 # Развертывание backend-gateway
