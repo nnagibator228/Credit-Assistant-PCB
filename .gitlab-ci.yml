@@ -22,8 +22,10 @@ deploy-test-env-job:
 # Установка переменных для развертывания API Gateway и создание контейнера.
     - export sa_id=$TESTING_SA_ID
 # Развертывание статичных моков
-    - yc serverless api-gateway create --name testing-product --spec=${CI_PROJECT_DIR}/product/openapi.yml --description "created from gitlab CI" --cloud-id ${cloud_id} --folder-name ${psb_testing}
-    - yc serverless api-gateway create --name testing-score --spec=${CI_PROJECT_DIR}/score/openapi.yml --description "created from gitlab CI" --cloud-id ${cloud_id} --folder-name ${psb_testing}
+    - mkdir ./product && mkdir ./score
+    - mv ${CI_PROJECT_DIR}/product/openapi.yml ./product/openapi.yml && ${CI_PROJECT_DIR}/score/openapi.yml ./score/openapi.yml
+    - yc serverless api-gateway create --name testing-product --spec=./product/openapi.yml --description "created from gitlab CI" --cloud-id ${cloud_id} --folder-name ${psb_testing}
+    - yc serverless api-gateway create --name testing-score --spec=./score/openapi.yml --description "created from gitlab CI" --cloud-id ${cloud_id} --folder-name ${psb_testing}
 # Экспорт их url в env-ы
     - export productdomain=$(yc serverless api-gateway get testing-product --cloud-id ${cloud_id} --folder-name ${psb_testing} | yq .domain)
     - export scoredomain=$(yc serverless api-gateway get testing-score --cloud-id ${cloud_id} --folder-name ${psb_testing} | yq .domain)
@@ -31,14 +33,15 @@ deploy-test-env-job:
     - echo "https://"$scoredomain
 #  Подстановка переменных в params.json функции
     - (cat ${CI_PROJECT_DIR}/backend/function/params.json.j2 | envsubst) > ${CI_PROJECT_DIR}/backend/function/params.json
-    - zip ${CI_PROJECT_DIR}/backend/function.zip -r ${CI_PROJECT_DIR}/backend/function
+    - mkdir ./backend
+    - zip ./backend/function.zip -r ${CI_PROJECT_DIR}/backend/function
     - export function_id=$(yc serverless function create --name testing --cloud-id ${cloud_id} --folder-name ${psb_testing} | yq .id)
 # Развертывание функции.
-    - yc serverless function version create --function-name testing --runtime nodejs12  --entrypoint index.handler --memory 128m --execution-timeout 10s -source-path ${CI_PROJECT_DIR}/backend/function.zip
+    - yc serverless function version create --function-name testing --runtime nodejs12  --entrypoint index.handler --memory 128m --execution-timeout 10s -source-path ./backend/function.zip
 # Подстановка переменных в openapi.yml backend-а
-    - (cat ${CI_PROJECT_DIR}/backend/openapi.yml.j2 | envsubst) > ${CI_PROJECT_DIR}/backend/openapi.yml
+    - (cat ${CI_PROJECT_DIR}/backend/openapi.yml.j2 | envsubst) > ./backend/openapi.yml
 # Развертывание backend-gateway
-    - yc serverless api-gateway create --name testing-main --spec=${CI_PROJECT_DIR}/backend/openapi.yml --description "created from gitlab CI" --cloud-id ${cloud_id} --folder-name ${psb_testing}
+    - yc serverless api-gateway create --name testing-main --spec=./backend/openapi.yml --description "created from gitlab CI" --cloud-id ${cloud_id} --folder-name ${psb_testing}
 # Настройка шаблона и развертывание API Gateway.
     - mkdir output
     - export gwdomain=$(yc serverless api-gateway get testing-main --cloud-id ${cloud_id} --folder-name ${psb_testing} | yq .domain)
@@ -94,8 +97,10 @@ release-job:
 # Установка переменных для развертывания API Gateway и создание контейнера.
     - export sa_id=$PROD_SA_ID
 # Развертывание статичных моков
-    - yc serverless api-gateway create --name production-product --spec=${CI_PROJECT_DIR}/product/openapi.yml --description "created from gitlab CI" --cloud-id ${cloud_id} --folder-name ${psb_prod}
-    - yc serverless api-gateway create --name production-score --spec=${CI_PROJECT_DIR}/score/openapi.yml --description "created from gitlab CI" --cloud-id ${cloud_id} --folder-name ${psb_prod}
+    - mkdir ./product && mkdir ./score
+    - mv ${CI_PROJECT_DIR}/product/openapi.yml ./product/openapi.yml && ${CI_PROJECT_DIR}/score/openapi.yml ./score/openapi.yml
+    - yc serverless api-gateway create --name production-product --spec=./product/openapi.yml --description "created from gitlab CI" --cloud-id ${cloud_id} --folder-name ${psb_prod}
+    - yc serverless api-gateway create --name production-score --spec=./score/openapi.yml --description "created from gitlab CI" --cloud-id ${cloud_id} --folder-name ${psb_prod}
 # Экспорт их url в env-ы
     - export productdomain=$(yc serverless api-gateway get production-product --cloud-id ${cloud_id} --folder-name ${psb_prod} | yq .domain)
     - export scoredomain=$(yc serverless api-gateway get production-score --cloud-id ${cloud_id} --folder-name ${psb_prod} | yq .domain)
@@ -103,14 +108,15 @@ release-job:
     - echo "https://"$scoredomain
 #  Подстановка переменных в params.json функции
     - (cat ${CI_PROJECT_DIR}/backend/function/params.json.j2 | envsubst) > ${CI_PROJECT_DIR}/backend/function/params.json
-    - zip ${CI_PROJECT_DIR}/backend/function.zip -r ${CI_PROJECT_DIR}/backend/function
+    - mkdir ./backend
+    - zip ./backend/function.zip -r ${CI_PROJECT_DIR}/backend/function
     - export function_id=$(yc serverless function create --name production --cloud-id ${cloud_id} --folder-name ${psb_prod} | yq .id)
 # Развертывание функции.
-    - yc serverless function version create --function-name production --runtime nodejs12  --entrypoint index.handler --memory 128m --execution-timeout 10s -source-path ${CI_PROJECT_DIR}/backend/function.zip
+    - yc serverless function version create --function-name production --runtime nodejs12  --entrypoint index.handler --memory 128m --execution-timeout 10s -source-path ./backend/function.zip
 # Подстановка переменных в openapi.yml backend-а
-    - (cat ${CI_PROJECT_DIR}/backend/openapi.yml.j2 | envsubst) > ${CI_PROJECT_DIR}/backend/openapi.yml
+    - (cat ${CI_PROJECT_DIR}/backend/openapi.yml.j2 | envsubst) > ./backend/openapi.yml
 # Развертывание backend-gateway
-    - yc serverless api-gateway create --name production-main --spec=${CI_PROJECT_DIR}/backend/openapi.yml --description "created from gitlab CI" --cloud-id ${cloud_id} --folder-name ${psb_prod}
+    - yc serverless api-gateway create --name production-main --spec=./backend/openapi.yml --description "created from gitlab CI" --cloud-id ${cloud_id} --folder-name ${psb_prod}
 # Настройка шаблона и развертывание API Gateway.
     - mkdir output
     - export gwdomain=$(yc serverless api-gateway get production-main --cloud-id ${cloud_id} --folder-name ${psb_prod} | yq .domain)
