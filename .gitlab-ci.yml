@@ -31,7 +31,6 @@ deploy-test-env-job:
     - echo "https://"$scoredomain
 #  Подстановка переменных в params.json функции
     - (cat ${CI_PROJECT_DIR}/backend/function/params.json.j2 | envsubst) > ${CI_PROJECT_DIR}/backend/function/params.json
-    - mkdir ./backend
     - zip ./backend/function.zip -r ${CI_PROJECT_DIR}/backend/function
     - export function_id=$(yc serverless function create --name testing --cloud-id ${cloud_id} --folder-name ${psb_testing} | yq .id)
 # Развертывание функции.
@@ -104,7 +103,6 @@ release-job:
     - echo "https://"$scoredomain
 #  Подстановка переменных в params.json функции
     - (cat ${CI_PROJECT_DIR}/backend/function/params.json.j2 | envsubst) > ${CI_PROJECT_DIR}/backend/function/params.json
-    - mkdir ./backend
     - zip ./backend/function.zip -r ${CI_PROJECT_DIR}/backend/function
     - export function_id=$(yc serverless function create --name production --cloud-id ${cloud_id} --folder-name ${psb_prod} | yq .id)
 # Развертывание функции.
