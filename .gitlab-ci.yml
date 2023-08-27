@@ -23,7 +23,7 @@ deploy-test-env-job:
     - export sa_id=$TESTING_SA_ID
 # Развертывание статичных моков
     - mkdir ./product && mkdir ./score
-    - mv ${CI_PROJECT_DIR}/product/openapi.yml ./product/openapi.yml && ${CI_PROJECT_DIR}/score/openapi.yml ./score/openapi.yml
+    - cp ${CI_PROJECT_DIR}/product/openapi.yml ./product/openapi.yml && cp ${CI_PROJECT_DIR}/score/openapi.yml ./score/openapi.yml
     - yc serverless api-gateway create --name testing-product --spec=./product/openapi.yml --description "created from gitlab CI" --cloud-id ${cloud_id} --folder-name ${psb_testing}
     - yc serverless api-gateway create --name testing-score --spec=./score/openapi.yml --description "created from gitlab CI" --cloud-id ${cloud_id} --folder-name ${psb_testing}
 # Экспорт их url в env-ы
@@ -98,7 +98,7 @@ release-job:
     - export sa_id=$PROD_SA_ID
 # Развертывание статичных моков
     - mkdir ./product && mkdir ./score
-    - mv ${CI_PROJECT_DIR}/product/openapi.yml ./product/openapi.yml && ${CI_PROJECT_DIR}/score/openapi.yml ./score/openapi.yml
+    - cp ${CI_PROJECT_DIR}/product/openapi.yml ./product/openapi.yml && cp ${CI_PROJECT_DIR}/score/openapi.yml ./score/openapi.yml
     - yc serverless api-gateway create --name production-product --spec=./product/openapi.yml --description "created from gitlab CI" --cloud-id ${cloud_id} --folder-name ${psb_prod}
     - yc serverless api-gateway create --name production-score --spec=./score/openapi.yml --description "created from gitlab CI" --cloud-id ${cloud_id} --folder-name ${psb_prod}
 # Экспорт их url в env-ы
