@@ -1,11 +1,7 @@
-exports.handler = async function (event, context) {
-    name = event.queryStringParameters.name
+module.exports.handler = async (event) => {
     return {
-        'statusCode': 200,
-        'headers': {
-            'Content-Type': 'text/plain'
-        },
-        'isBase64Encoded': false,
-        'body': `Hello, ${name}!`
-    }
+        "statusCode": 200,
+        "headers": {"content-type": "application/json"},
+        "body": "[0, 1, 2]"
+    };
 };

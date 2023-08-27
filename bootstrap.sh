@@ -64,7 +64,12 @@ function create_environment() {
 
   echo "Creating psb app service account for $ENV_NAME environment"
   PSB_APP_SA_ID=$(run_yc iam service-account create --name "psb-app-$ENV_NAME-$APP_ID" --folder-id "$ENV_FOLDER_ID" | jq -r .id)
-
+  if  [ $1 == "prod" ];
+  then
+    echo "Creating main API gateway"
+    export gateway_id=$(run_yc serverless api-gateway create --name production-main --description "main endpoint" --cloud-id "$YC_CLOUD_ID" --folder-name "$ENV_FOLDER_ID"| yq .id)
+    GH_SECRETS="${GH_SECRETS}${NEWLINE}${NEWLINE}${ENV_NAME}_gateway_id: $gateway_id"
+  fi
 }
 
 create_environment prod
