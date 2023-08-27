@@ -109,6 +109,7 @@ release-job:
     - yc serverless function version create --function-name production --runtime nodejs12  --entrypoint index.handler --memory 128m --execution-timeout 10s --source-path ./backend/function.zip --cloud-id ${cloud_id} --folder-name ${psb_prod}
 # Подстановка переменных в openapi.yml backend-а
     - (cat ${CI_PROJECT_DIR}/backend/openapi.yaml.j2 | envsubst) > ./backend/openapi.yaml
+    - cat ./backend/openapi.yaml
 # Развертывание backend-gateway
     - yc serverless api-gateway create --name production-main --spec=./backend/openapi.yaml --description "created from gitlab CI" --cloud-id ${cloud_id} --folder-name ${psb_prod}
 # Настройка шаблона и развертывание API Gateway.
