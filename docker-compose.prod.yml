@@ -1,0 +1,101 @@
+version: "3.9"
+
+services:
+  redis:
+    image: redis:6.2
+    volumes:
+      - redis-data:/data
+    networks:
+      - webnet
+
+  rabbitmq:
+    image: rabbitmq:latest
+    volumes:
+        - rabbitmq-data:/var/lib/rabbitmq
+    networks:
+      - webnet
+    environment:
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USERNAME-rabbit}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD-passwd}
+
+  worker:
+    build:
+      dockerfile: Dockerfile
+      context: ./worker
+    networks:
+      - webnet
+    environment:
+      - POSTGRES_HOST=db
+      - POSTGRES_DB=${POSTGRES_DB-"voice-banking"}
+      - POSTGRES_USER=${POSTGRES_USER-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD-postgres}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_CELERY_DB_INDEX=10
+      - REDIS_STORE_DB_INDEX=0
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_USERNAME=${RABBITMQ_USERNAME-rabbit}
+      - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD-passwd}
+      - RABBITMQ_PORT=5672
+      - SECRET=${SECRET-default}
+    depends_on:
+      - redis
+      - rabbitmq
+    command: celery -A app.celery-app.tasks worker --loglevel=INFO
+
+  db:
+    image: postgres:15
+    volumes:
+      - db-data:/var/lib/postgresql/data/
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB-"voice-baning"}
+      - POSTGRES_USER=${POSTGRES_USER-user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD-password}
+    networks:
+      - webnet
+
+  backend:
+    build:
+      dockerfile: Dockerfile
+      context: ./backend
+    depends_on:
+      - db
+    ports:
+      - 80:8080
+    environment:
+      - POSTGRES_HOST=db
+      - POSTGRES_DB=${POSTGRES_DB-"voice-banking"}
+      - POSTGRES_USER=${POSTGRES_USER-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD-postgres}
+      - DATABASE_URL=postgresql+psycopg2://${POSTGRES_USER-postgres}:${POSTGRES_PASSWORD-postgres}@db:5432
+      - SECRET=${SECRET-default}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_CELERY_DB_INDEX=10
+      - REDIS_STORE_DB_INDEX=0
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_USERNAME=${RABBITMQ_USERNAME-rabbit}
+      - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD-passwd}
+      - RABBITMQ_PORT=5672
+    networks:
+      - webnet
+
+
+
+  frontend:
+    build:
+      dockerfile: Dockerfile.prod
+      context: ./frontend
+    environment:
+      - NODE_ENV=production
+    networks:
+      - webnet
+
+volumes:
+  db-data:
+  redis-data:
+  rabbitmq-data:
+
+networks:
+  webnet:
+    external: true
