@@ -1,23 +1,136 @@
+stages:
+  - build
+  - deploy-test-env
+  - test
+  - delete-test-env
+  - release
+
+# Сборка образа контейнера.
 build-job:
   stage: build
+# Использование kaniko для создания контейнера внутри контейнера для большей безопасности.
+  image:
+    name: gcr.io/kaniko-project/executor:debug
+    entrypoint: [""]
   script:
-    - echo "Hello, $GITLAB_USER_LOGIN!"
+    - mkdir -p /kaniko/.docker
+# Отправка образа контейнера в реестр. Образ отмечен хэшем коммита.
+    - echo "{\"auths\":{\"$CI_REGISTRY\":{\"auth\":\"$(echo -n "json_key:${CI_REGISTRY_KEY}" | base64 | tr -d '\n' )\"}}}" > /kaniko/.docker/config.json
+    - >-
+      /kaniko/executor
+      --context "${CI_PROJECT_DIR}/application"
+      --dockerfile "${CI_PROJECT_DIR}/application/Dockerfile"
+      --destination "${CI_REGISTRY}/${CI_PROJECT_PATH}:${CI_COMMIT_SHORT_SHA}"
 
-test-job1:
+# Развертывание тестовой среды с использованием встроенного образа контейнера.
+deploy-test-env-job:
+  stage: deploy-test-env
+  image: alpine:3.15
+  script:
+# Установка инструментов.
+    - apk add -q --no-cache bash curl jq gettext zip
+    - apk add yq --repository=http://dl-cdn.alpinelinux.org/alpine/edge/community
+    - curl -f -s -LO https://storage.yandexcloud.net/yandexcloud-yc/install.sh
+    - bash install.sh -i /usr/local/yandex-cloud -n
+    - ln -s /usr/local/yandex-cloud/bin/yc /usr/local/bin/yc
+ # Аутентификация с помощью ключа сервисного аккаунта.
+    - echo "$SA_TESTING_DEPLOYER_PRIVATE_KEY" > key.json
+    - yc config profile create sa-profile
+    - yc config set service-account-key key.json
+# Установка переменных для развертывания API Gateway и создание контейнера.
+    - export sa_id=$TESTING_SA_ID
+# Развертывание статичных моков
+    - yc serverless api-gateway create --name testing-product --spec=${CI_PROJECT_DIR}/product/openapi.yml --description "created from gitlab CI" --cloud-id ${cloud_id} --folder-name ${psb_testing}
+    - yc serverless api-gateway create --name testing-score --spec=${CI_PROJECT_DIR}/score/openapi.yml --description "created from gitlab CI" --cloud-id ${cloud_id} --folder-name ${psb_testing}
+# Экспорт их url в env-ы
+    - export productdomain=$(yc serverless api-gateway get testing-product --cloud-id ${cloud_id} --folder-name ${psb_testing} | yq .domain)
+    - export scoredomain=$(yc serverless api-gateway get testing-score --cloud-id ${cloud_id} --folder-name ${psb_testing} | yq .domain)
+    - echo "https://"$productdomain
+    - echo "https://"$scoredomain
+#  Подстановка переменных в params.json функции
+    - (cat ${CI_PROJECT_DIR}/backend/function/params.json.j2 | envsubst) > ${CI_PROJECT_DIR}/backend/function/params.json
+    - zip ${CI_PROJECT_DIR}/backend/function.zip -r ${CI_PROJECT_DIR}/backend/function
+    - export function_id=$(yc serverless function create --name testing --cloud-id ${cloud_id} --folder-name ${psb_testing} | yq .id)
+# Развертывание функции.
+    - yc serverless function version create --function-name testing --runtime nodejs12  --entrypoint index.handler --memory 128m --execution-timeout 10s -source-path ${CI_PROJECT_DIR}/backend/function.zip
+# Подстановка переменных в openapi.yml backend-а
+    - (cat ${CI_PROJECT_DIR}/backend/openapi.yml.j2 | envsubst) > ${CI_PROJECT_DIR}/backend/openapi.yml
+# Развертывание backend-gateway
+    - yc serverless api-gateway create --name testing-main --spec=${CI_PROJECT_DIR}/backend/openapi.yml --description "created from gitlab CI" --cloud-id ${cloud_id} --folder-name ${psb_testing}
+# Настройка шаблона и развертывание API Gateway.
+    - mkdir output
+    - export gwdomain=$(yc serverless api-gateway get testing-main --cloud-id ${cloud_id} --folder-name ${psb_testing} | yq .domain)
+    - echo "https://"$gwdomain>output/gwurl
+  artifacts:
+    paths: [output/]
+
+e2e-test-job:
   stage: test
+  image: alpine:3.15
   script:
-    - echo "This job tests something"
+    - apk add -q --no-cache bash curl
+    - apk add yq --repository=http://dl-cdn.alpinelinux.org/alpine/edge/community
+    - cat output/gwurl
+    - export gwurlvar=$(cat output/gwurl)
+    - curl $gwurlvar
 
-test-job2:
+load-test-job:
   stage: test
+  image: alpine:3.15
   script:
-    - echo "This job tests something, but takes more time than test-job1."
-    - echo "After the echo commands complete, it runs the sleep command for 20 seconds"
-    - echo "which simulates a test that runs 20 seconds longer than test-job1"
-    - sleep 20
+    - echo "Here goes load testing commands"
+    - echo "Might even invoke bash with prepared bash script"
+    - echo "Hello!"
 
-deploy-prod:
-  stage: deploy
+delete-test-env-job:
+  stage: delete-test-env
+  image: alpine:3.15
   script:
-    - echo "This job deploys something from the $CI_COMMIT_BRANCH branch."
-  environment: production
+    - apk add -q --no-cache bash curl jq gettext yq
+    - curl -f -s -LO https://storage.yandexcloud.net/yandexcloud-yc/install.sh
+    - bash install.sh -i /usr/local/yandex-cloud -n
+    - ln -s /usr/local/yandex-cloud/bin/yc /usr/local/bin/yc
+    - echo "$SA_TESTING_DEPLOYER_PRIVATE_KEY" > key.json
+    - yc config profile create sa-profile
+    - yc config set service-account-key key.json
+    - yc serverless api-gateway delete testing-product --cloud-id ${cloud_id} --folder-name ${psb_testing}
+    - yc serverless api-gateway delete testing-score --cloud-id ${cloud_id} --folder-name ${psb_testing}
+    - yc serverless api-gateway delete testing-main --cloud-id ${cloud_id} --folder-name ${psb_testing}
+    - yc serverless container delete testing --cloud-id ${cloud_id} --folder-name ${psb_testing}
+
+release-job:
+  stage: release
+  image: alpine:3.15
+  script:
+    - apk add -q --no-cache bash curl jq gettext zip
+    - curl -f -s -LO https://storage.yandexcloud.net/yandexcloud-yc/install.sh
+    - bash install.sh -i /usr/local/yandex-cloud -n
+    - ln -s /usr/local/yandex-cloud/bin/yc /usr/local/bin/yc
+    - echo "$SA_PROD_DEPLOYER_PRIVATE_KEY" > key.json
+    - yc config profile create sa-profile
+    - yc config set service-account-key key.json
+# Установка переменных для развертывания API Gateway и создание контейнера.
+    - export sa_id=$PROD_SA_ID
+# Развертывание статичных моков
+    - yc serverless api-gateway create --name production-product --spec=${CI_PROJECT_DIR}/product/openapi.yml --description "created from gitlab CI" --cloud-id ${cloud_id} --folder-name ${psb_prod}
+    - yc serverless api-gateway create --name production-score --spec=${CI_PROJECT_DIR}/score/openapi.yml --description "created from gitlab CI" --cloud-id ${cloud_id} --folder-name ${psb_prod}
+# Экспорт их url в env-ы
+    - export productdomain=$(yc serverless api-gateway get production-product --cloud-id ${cloud_id} --folder-name ${psb_prod} | yq .domain)
+    - export scoredomain=$(yc serverless api-gateway get production-score --cloud-id ${cloud_id} --folder-name ${psb_prod} | yq .domain)
+    - echo "https://"$productdomain
+    - echo "https://"$scoredomain
+#  Подстановка переменных в params.json функции
+    - (cat ${CI_PROJECT_DIR}/backend/function/params.json.j2 | envsubst) > ${CI_PROJECT_DIR}/backend/function/params.json
+    - zip ${CI_PROJECT_DIR}/backend/function.zip -r ${CI_PROJECT_DIR}/backend/function
+    - export function_id=$(yc serverless function create --name production --cloud-id ${cloud_id} --folder-name ${psb_prod} | yq .id)
+# Развертывание функции.
+    - yc serverless function version create --function-name production --runtime nodejs12  --entrypoint index.handler --memory 128m --execution-timeout 10s -source-path ${CI_PROJECT_DIR}/backend/function.zip
+# Подстановка переменных в openapi.yml backend-а
+    - (cat ${CI_PROJECT_DIR}/backend/openapi.yml.j2 | envsubst) > ${CI_PROJECT_DIR}/backend/openapi.yml
+# Развертывание backend-gateway
+    - yc serverless api-gateway create --name production-main --spec=${CI_PROJECT_DIR}/backend/openapi.yml --description "created from gitlab CI" --cloud-id ${cloud_id} --folder-name ${psb_prod}
+# Настройка шаблона и развертывание API Gateway.
+    - mkdir output
+    - export gwdomain=$(yc serverless api-gateway get production-main --cloud-id ${cloud_id} --folder-name ${psb_prod} | yq .domain)
+    - echo "https://"$gwdomain>output/gwurl
+# Создание продакшн среды.
