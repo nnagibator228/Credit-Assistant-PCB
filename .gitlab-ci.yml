@@ -115,7 +115,6 @@ release-job:
 # Развертывание backend-gateway
     - yc serverless api-gateway create --name production-main --spec=./backend/openapi.yaml --description "created from gitlab CI" --cloud-id ${cloud_id} --folder-name ${psb_prod}
 # Настройка шаблона и развертывание API Gateway.
-    - mkdir output
     - export gwdomain=$(yc serverless api-gateway get production-main --cloud-id ${cloud_id} --folder-name ${psb_prod} | yq .domain)
-    - echo "https://"$gwdomain>output/gwurl
+    - echo "https://"$gwdomain
 # Создание продакшн среды.
