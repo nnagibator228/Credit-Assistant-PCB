@@ -1,26 +1,8 @@
 stages:
-  - build
   - deploy-test-env
   - test
   - delete-test-env
   - release
-
-# Сборка образа контейнера.
-build-job:
-  stage: build
-# Использование kaniko для создания контейнера внутри контейнера для большей безопасности.
-  image:
-    name: gcr.io/kaniko-project/executor:debug
-    entrypoint: [""]
-  script:
-    - mkdir -p /kaniko/.docker
-# Отправка образа контейнера в реестр. Образ отмечен хэшем коммита.
-    - echo "{\"auths\":{\"$CI_REGISTRY\":{\"auth\":\"$(echo -n "json_key:${CI_REGISTRY_KEY}" | base64 | tr -d '\n' )\"}}}" > /kaniko/.docker/config.json
-    - >-
-      /kaniko/executor
-      --context "${CI_PROJECT_DIR}/application"
-      --dockerfile "${CI_PROJECT_DIR}/application/Dockerfile"
-      --destination "${CI_REGISTRY}/${CI_PROJECT_PATH}:${CI_COMMIT_SHORT_SHA}"
 
 # Развертывание тестовой среды с использованием встроенного образа контейнера.
 deploy-test-env-job:
