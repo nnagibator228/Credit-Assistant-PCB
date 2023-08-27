@@ -2,6 +2,7 @@ stages:
   - deploy-test-env
   - test
   - delete-test-env
+  - remove-prod-env
   - release
 
 # Развертывание тестовой среды с использованием встроенного образа контейнера.
@@ -79,6 +80,21 @@ delete-test-env-job:
     - yc serverless api-gateway delete testing-score --cloud-id ${cloud_id} --folder-name ${psb_testing}
     - yc serverless api-gateway delete testing-main --cloud-id ${cloud_id} --folder-name ${psb_testing}
     - yc serverless function delete testing --cloud-id ${cloud_id} --folder-name ${psb_testing}
+
+remove-prod-env-job:
+  stage: delete-test-env
+  image: alpine:3.15
+  script:
+    - apk add -q --no-cache bash curl jq gettext yq
+    - curl -f -s -LO https://storage.yandexcloud.net/yandexcloud-yc/install.sh
+    - bash install.sh -i /usr/local/yandex-cloud -n
+    - ln -s /usr/local/yandex-cloud/bin/yc /usr/local/bin/yc
+    - echo "$SA_PROD_DEPLOYER_PRIVATE_KEY" > key.json
+    - yc config profile create sa-profile
+    - yc config set service-account-key key.json
+    - yc serverless api-gateway delete production-product --cloud-id ${cloud_id} --folder-name ${psb_prod}
+    - yc serverless api-gateway delete production-score --cloud-id ${cloud_id} --folder-name ${psb_prod}
+    - yc serverless function delete production --cloud-id ${cloud_id} --folder-name ${psb_prod}
 
 release-job:
   stage: release
