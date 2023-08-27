@@ -6,7 +6,7 @@ services:
     volumes:
       - redis-data:/data
     env_file:
-      - .env.prod
+      - .env.test
     networks:
       - webnet
 
@@ -18,14 +18,14 @@ services:
       - RABBITMQ_DEFAULT_USER=${RABBITMQ_USERNAME-rabbit}
       - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD-passwd}
     env_file:
-      - .env.prod
+      - .env.test
     networks:
       - webnet
 
 
   worker:
     build:
-      dockerfile: Dockerfile.prod
+      dockerfile: Dockerfile.test
       context: ./worker
     environment:
       - POSTGRES_HOST=db
@@ -46,7 +46,7 @@ services:
       - rabbitmq
     command: celery -A app.celery-app.tasks worker --loglevel=INFO
     env_file:
-      - .env.prod
+      - .env.test
     networks:
       - webnet
 
@@ -59,13 +59,13 @@ services:
       - POSTGRES_USER=${POSTGRES_USER-user}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD-password}
     env_file:
-      - .env.prod
+      - .env.test
     networks:
       - webnet
 
   backend:
     build:
-      dockerfile: Dockerfile.prod
+      dockerfile: Dockerfile.test
       context: ./backend
     depends_on:
       - db
@@ -87,20 +87,20 @@ services:
       - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD-passwd}
       - RABBITMQ_PORT=5672
     env_file:
-      - .env.prod
+      - .env.test
     networks:
       - webnet
 
   telegram:
     build:
-      context: Dockerfile.prod
+      context: Dockerfile.test
       dockerfile: ./telegram
     depends_on:
       - backend
     environment:
       - NODE_ENV=production
     env_file:
-      - .env.prod
+      - .env.test
     networks:
       - webnet
 
@@ -118,7 +118,7 @@ services:
       - html:/usr/share/nginx/html
       - ./nginx/proxy.conf:/etc/nginx/proxy.conf
     env_file:
-      - .env.prod
+      - .env.test
     networks:
       - webnet
 
@@ -135,13 +135,13 @@ services:
       - certs:/etc/nginx/certs
       - html:/usr/share/nginx/html
     env_file:
-      - .env.prod
+      - .env.test
     networks:
       - webnet
 
   frontend:
     build:
-      dockerfile: Dockerfile.prod
+      dockerfile: Dockerfile.test
       context: ./frontend
     depends_on:
       - backend
@@ -151,7 +151,7 @@ services:
       - VIRTUAL_PORT=9000
       - LETSENCRYPT_HOST=${DOMAIN}
     env_file:
-      - .env.prod
+      - .env.test
     networks:
       - webnet
 
