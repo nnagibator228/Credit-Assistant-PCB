@@ -1,0 +1,27 @@
+project_name: $pname
+project_slug: $pname
+description: null
+requirements_file: requirements.txt
+bucket: null
+application_type: asgi
+entrypoint: app.main.app
+django_settings_module: null
+folder_id: $folder_id
+gw_config: openapi.yaml
+manage_function_name: null
+runtime: python39
+memory_limit: 128MB
+timeout: 10
+service_account_names:
+  creator: $sa_name
+  function_actor: null
+excluded_paths:
+- venv
+- .git
+- .idea
+- .DS_Store
+- .yc
+environment: {}
+named_service_accounts: {}
+service_account_id: null
+is_public: true

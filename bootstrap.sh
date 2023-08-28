@@ -32,6 +32,10 @@ function run_yc() {
   yc --profile "$YC_PROFILE" --format json "$@"
 }
 
+function generateToken() {
+    pwgen -s 15 1
+}
+
 function create_environment() {
   ENV_NAME=$1
   ENV_NAME_UPPER=$(echo "$ENV_NAME" | tr '[:lower:]' '[:upper:]')
@@ -68,8 +72,19 @@ function create_environment() {
   then
     echo "Creating main API gateway"
     export gateway_id=$(run_yc serverless api-gateway create --name production-main --description "main endpoint" --cloud-id "$YC_CLOUD_ID" --folder-name "$ENV_FOLDER_ID"| yq .id)
+    echo "Creating API gateways"
+    yc serverless function create --function-name production-main --runtime nodejs16 --folder-name "$ENV_FOLDER_ID"
+    yc serverless api-gateway create --name production-score --description "score endpoint" --cloud-id "$YC_CLOUD_ID" --folder-name "$ENV_FOLDER_ID"
+    yc serverless function create --function-name production-score --runtime nodejs16 --folder-name "$ENV_FOLDER_ID"
+    yc serverless function create --name production-auth --cloud-id ${cloud_id} --folder-name ${psb_testing}
+    yc vpc network create --name prod --folder-name "$ENV_FOLDER_ID"
+    yc vpc subnet create --name ru-central1-a --network-name prod --zone 'ru-central1-a' --range 172.18.0.0/24
+    yc vpc address create --external-ipv4 zone=ru-central1-a
+    yc compute instance create-with-container --name front-vm --zone ru-central1-a
+    yc compute instance add-one-to-one-nat 
     GH_SECRETS="${GH_SECRETS}${NEWLINE}${NEWLINE}${ENV_NAME}_gateway_id: $gateway_id"
   fi
+  GH_SECRETS="${GH_SECRETS}${NEWLINE}${NEWLINE}${ENV_NAME}_auth_token: ${generateToken}"
 }
 
 create_environment prod

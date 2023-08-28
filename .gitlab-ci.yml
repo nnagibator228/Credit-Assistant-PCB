@@ -1,7 +1,7 @@
 stages:
   - deploy-test-env
   - test
-  - modify-envs
+  - delete-test-env
   - release
 
 # Развертывание тестовой среды с использованием встроенного образа контейнера.
@@ -10,7 +10,7 @@ deploy-test-env-job:
   image: alpine:3.15
   script:
 # Установка инструментов.
-    - apk add -q --no-cache bash curl jq gettext zip
+    - apk add -q --no-cache bash curl jq gettext zip python3
     - apk add yq --repository=http://dl-cdn.alpinelinux.org/alpine/edge/community
     - curl -f -s -LO https://storage.yandexcloud.net/yandexcloud-yc/install.sh
     - bash install.sh -i /usr/local/yandex-cloud -n
@@ -21,23 +21,40 @@ deploy-test-env-job:
     - yc config set service-account-key key.json
 # Установка переменных для развертывания API Gateway и создание контейнера.
     - export sa_id=$TESTING_SA_ID
-# Развертывание статичных моков
-    - yc serverless api-gateway create --name testing-product --spec=./product/openapi.yaml --description "created from gitlab CI" --cloud-id ${cloud_id} --folder-name ${psb_testing}
+# Деплой через yappa-у Product-части
+    - pip3 install yappa -U
+    - cp key.json ./product/.yc
+    - export folder_id=$(yc resource-manager folder list --format=json | jq -r '.[].id')
+    - export sa_name=$(yc iam service-account get ${sa_id} --format=json | jq -r '.name')
+    - export pname=testing-product
+    - (cat ${CI_PROJECT_DIR}/product/yappa.yaml.j2 | envsubst) > ${CI_PROJECT_DIR}/product/yappa.yaml
+    - cd ./product/ && yappa deploy --description "created from gitlab CI" && cd ../
+# Деплой функции для аутентификации
+    - export token=${testing_auth_token}
+    - (cat ${CI_PROJECT_DIR}/auth/function/params.json.j2 | envsubst) > ${CI_PROJECT_DIR}/auth/function/params.json
+    - zip ./auth/function.zip -r ${CI_PROJECT_DIR}/auth/function
+    - export auth_function_id=$(yc serverless function create --name testing-auth --cloud-id ${cloud_id} --folder-name ${psb_testing} | yq .id)
+    - yc serverless function version create --function-name testing-auth --runtime nodejs16  --entrypoint /builds/team3/credit-assistant/auth/function/code/index.handler --memory 128m --execution-timeout 10s --source-path ./auth/function.zip --cloud-id ${cloud_id} --folder-name ${psb_testing}
+# Деплой функции для подсчета скоринга
+    - zip ./score/function.zip -r ${CI_PROJECT_DIR}/score/function
+    - export score_function_id=$(yc serverless function create --name testing-score --cloud-id ${cloud_id} --folder-name ${psb_testing} | yq .id)
+    - yc serverless function version create --function-name testing-score --runtime nodejs16  --entrypoint /builds/team3/credit-assistant/score/function/code/index.handler --memory 128m --execution-timeout 10s --source-path ./score/function.zip --cloud-id ${cloud_id} --folder-name ${psb_testing}
+# Деплой Gateway для скоринг-функции
+    - (cat ${CI_PROJECT_DIR}/score/openapi.yaml.j2 | envsubst) > ./score/openapi.yaml
+    - cat ./score/openapi.yaml
     - yc serverless api-gateway create --name testing-score --spec=./score/openapi.yaml --description "created from gitlab CI" --cloud-id ${cloud_id} --folder-name ${psb_testing}
-# Экспорт их url в env-ы
+# Экспорт url созданных gateway-ов в env-ы для дальнейшей подстановки в центральный сервис
     - export productdomain=$(yc serverless api-gateway get testing-product --cloud-id ${cloud_id} --folder-name ${psb_testing} | yq .domain)
     - export scoredomain=$(yc serverless api-gateway get testing-score --cloud-id ${cloud_id} --folder-name ${psb_testing} | yq .domain)
     - echo "https://"$productdomain
     - echo "https://"$scoredomain
-#  Подстановка переменных в params.json функции
+# Развертывание центральной функции.
     - (cat ${CI_PROJECT_DIR}/backend/function/params.json.j2 | envsubst) > ${CI_PROJECT_DIR}/backend/function/params.json
     - zip ./backend/function.zip -r ${CI_PROJECT_DIR}/backend/function
-    - export function_id=$(yc serverless function create --name testing --cloud-id ${cloud_id} --folder-name ${psb_testing} | yq .id)
-# Развертывание функции.
-    - yc serverless function version create --function-name testing --runtime nodejs12  --entrypoint /builds/team3/credit-assistant/backend/function/code/index.handler --memory 128m --execution-timeout 10s --source-path ./backend/function.zip --cloud-id ${cloud_id} --folder-name ${psb_testing}
-# Подстановка переменных в openapi.yml backend-а
+    - export main_function_id=$(yc serverless function create --name testing-main --cloud-id ${cloud_id} --folder-name ${psb_testing} | yq .id)
+    - yc serverless function version create --function-name testing-main --runtime nodejs16  --entrypoint /builds/team3/credit-assistant/backend/function/code/index.handler --memory 128m --execution-timeout 10s --source-path ./backend/function.zip --cloud-id ${cloud_id} --folder-name ${psb_testing}
+# Развертывание Gateway для центральной функции
     - (cat ${CI_PROJECT_DIR}/backend/openapi.yaml.j2 | envsubst) > ./backend/openapi.yaml
-# Развертывание backend-gateway
     - yc serverless api-gateway create --name testing-main --spec=./backend/openapi.yaml --description "created from gitlab CI" --cloud-id ${cloud_id} --folder-name ${psb_testing}
 # Настройка шаблона и развертывание API Gateway.
     - mkdir output
@@ -65,7 +82,7 @@ load-test-job:
     - echo "Hello!"
 
 delete-test-env-job:
-  stage: modify-envs
+  stage: delete-test-env
   image: alpine:3.15
   script:
     - apk add -q --no-cache bash curl jq gettext yq
@@ -78,22 +95,9 @@ delete-test-env-job:
     - yc serverless api-gateway delete testing-product --cloud-id ${cloud_id} --folder-name ${psb_testing}
     - yc serverless api-gateway delete testing-score --cloud-id ${cloud_id} --folder-name ${psb_testing}
     - yc serverless api-gateway delete testing-main --cloud-id ${cloud_id} --folder-name ${psb_testing}
-    - yc serverless function delete testing --cloud-id ${cloud_id} --folder-name ${psb_testing}
-
-remove-prod-env-job:
-  stage: modify-envs
-  image: alpine:3.15
-  script:
-    - apk add -q --no-cache bash curl jq gettext yq
-    - curl -f -s -LO https://storage.yandexcloud.net/yandexcloud-yc/install.sh
-    - bash install.sh -i /usr/local/yandex-cloud -n
-    - ln -s /usr/local/yandex-cloud/bin/yc /usr/local/bin/yc
-    - echo "$SA_PROD_DEPLOYER_PRIVATE_KEY" > key.json
-    - yc config profile create sa-profile
-    - yc config set service-account-key key.json
-    - yc serverless api-gateway delete production-product --cloud-id ${cloud_id} --folder-name ${psb_prod}
-    - yc serverless api-gateway delete production-score --cloud-id ${cloud_id} --folder-name ${psb_prod}
-    - yc serverless function delete production --cloud-id ${cloud_id} --folder-name ${psb_prod}
+    - yc serverless function delete testing-product --cloud-id ${cloud_id} --folder-name ${psb_testing}
+    - yc serverless function delete testing-score --cloud-id ${cloud_id} --folder-name ${psb_testing}
+    - yc serverless function delete testing-main --cloud-id ${cloud_id} --folder-name ${psb_testing}
 
 release-job:
   stage: release
@@ -111,23 +115,40 @@ release-job:
     - yc config set service-account-key key.json
 # Установка переменных для развертывания API Gateway и создание контейнера.
     - export sa_id=$PROD_SA_ID
-# Развертывание статичных моков
-    - yc serverless api-gateway create --name production-product --spec=./product/openapi.yaml --description "created from gitlab CI" --cloud-id ${cloud_id} --folder-name ${psb_prod}
-    - yc serverless api-gateway create --name production-score --spec=./score/openapi.yaml --description "created from gitlab CI" --cloud-id ${cloud_id} --folder-name ${psb_prod}
-# Экспорт их url в env-ы
+# Релиз через yappa-у Product-части
+    - pip3 install yappa -U
+    - cp key.json ./product/.yc
+    - export folder_id=$(yc resource-manager folder list --format=json | jq -r '.[].id')
+    - export sa_name=$(yc iam service-account get ${sa_id} --format=json | jq -r '.name')
+    - export pname=production-product
+    - (cat ${CI_PROJECT_DIR}/product/yappa.yaml.j2 | envsubst) > ${CI_PROJECT_DIR}/product/yappa.yaml
+    - cd ./product/ && yappa deploy --description "created from gitlab CI" && cd ../
+# Релиз функции для аутентификации
+    - export token=${prod_auth_token}
+    - (cat ${CI_PROJECT_DIR}/auth/function/params.json.j2 | envsubst) > ${CI_PROJECT_DIR}/auth/function/params.json
+    - zip ./auth/function.zip -r ${CI_PROJECT_DIR}/auth/function
+    - yc serverless function version create --function-name production-auth --runtime nodejs16  --entrypoint /builds/team3/credit-assistant/auth/function/code/index.handler --memory 128m --execution-timeout 10s --source-path ./auth/function.zip --cloud-id ${cloud_id} --folder-name ${psb_prod}
+# Релиз функции для подсчета скоринга
+    - zip ./score/function.zip -r ${CI_PROJECT_DIR}/score/function
+    - yc serverless function version create --function-name production-score --runtime nodejs16  --entrypoint /builds/team3/credit-assistant/score/function/code/index.handler --memory 128m --execution-timeout 10s --source-path ./score/function.zip --cloud-id ${cloud_id} --folder-name ${psb_prod}
+# Релиз Gateway для скоринг-функции
+    - export auth_function_id=$(yc serverless function get production-auth | yq .id)
+    - export score_function_id=$(yc serverless function get production-score | yq .id)
+    - (cat ${CI_PROJECT_DIR}/score/openapi.yaml.j2 | envsubst) > ./score/openapi.yaml
+    - cat ./score/openapi.yaml
+    - yc serverless api-gateway update --name production-score --spec=./score/openapi.yaml --description "created from gitlab CI" --cloud-id ${cloud_id} --folder-name ${psb_prod}
+# Экспорт url созданных gateway-ов в env-ы для дальнейшей подстановки в центральный сервис
     - export productdomain=$(yc serverless api-gateway get production-product --cloud-id ${cloud_id} --folder-name ${psb_prod} | yq .domain)
     - export scoredomain=$(yc serverless api-gateway get production-score --cloud-id ${cloud_id} --folder-name ${psb_prod} | yq .domain)
     - echo "https://"$productdomain
     - echo "https://"$scoredomain
-#  Подстановка переменных в params.json функции
+# Релиз центральной функции.
     - (cat ${CI_PROJECT_DIR}/backend/function/params.json.j2 | envsubst) > ${CI_PROJECT_DIR}/backend/function/params.json
     - zip ./backend/function.zip -r ${CI_PROJECT_DIR}/backend/function
-    - export function_id=$(yc serverless function create --name production --cloud-id ${cloud_id} --folder-name ${psb_prod} | yq .id)
-# Развертывание функции.
-    - yc serverless function version create --function-name production --runtime nodejs12  --entrypoint index.handler --memory 128m --execution-timeout 10s --source-path ./backend/function.zip --cloud-id ${cloud_id} --folder-name ${psb_prod}
-# Подстановка переменных в openapi.yml backend-а
+    - yc serverless function version update --function-name production-main --runtime nodejs16  --entrypoint /builds/team3/credit-assistant/backend/function/code/index.handler --memory 128m --execution-timeout 10s --source-path ./backend/function.zip --cloud-id ${cloud_id} --folder-name ${psb_prod}
+# Релиз Gateway для центральной функции
+    - export main_function_id=$(yc serverless function get production-main | yq .id)   
     - (cat ${CI_PROJECT_DIR}/backend/openapi.yaml.j2 | envsubst) > ./backend/openapi.yaml
-# Развертывание backend-gateway
     - yc serverless api-gateway update --name production-main --spec=./backend/openapi.yaml --description "created from gitlab CI" --cloud-id ${cloud_id} --folder-name ${psb_prod}
 # Настройка шаблона и развертывание API Gateway.
     - export finaldomain=$(yc serverless api-gateway get production-main --cloud-id ${cloud_id} --folder-name ${psb_prod} | yq .domain)

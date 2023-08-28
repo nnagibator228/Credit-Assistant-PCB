@@ -1,0 +1,104 @@
+---
+openapi: 3.0.0
+info:
+  version: 1.0.0
+  title: Scoring API
+  description: Scoring provides api for calculating credit score.
+paths:
+  "/score":
+    post:
+      tags:
+      - scoring
+      description: Calculate credit score
+      responses:
+        '200':
+          description: Calculated score
+          content:
+            application/json:
+              schema:
+                "\$ref": "#/components/schemas/ScoringResponse"
+        '500':
+          description: Internal error
+          content:
+            application/json:
+              schema:
+                "\$ref": "#/components/schemas/Error"
+      x-yc-apigateway-integration:
+        type: cloud_functions
+        function_id: $score_function_id
+        service_account_id: $sa_id
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        description: ScoringData
+        content:
+          application/json:
+            schema:
+              "\$ref": "#/components/schemas/ScoringRequest"
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      x-yc-apigateway-authorizer:
+        type: function
+        function_id: $auth_function_id
+        service_account_id: $sa_id
+        authorizer_result_ttl_in_seconds: 20
+  schemas:
+    ScoringRequest:
+      type: object
+      properties:
+        personalInfo:
+          type: object
+          properties:
+            age:
+              type: number
+              example: 35
+            experience:
+              type: number
+              example: 7
+          required:
+          - age
+          - experience
+        financialInfo:
+          type: object
+          properties:
+            monthlyCreditPayments:
+              type: number
+              example: 500
+            monthlyIncome:
+              type: number
+              example: 6000
+            openLoans:
+              type: number
+              example: 3
+          required:
+          - monthlyCreditPayments
+          - monthlyIncome
+          - openLoans
+        collateralInfo:
+          type: object
+          properties:
+            collateralType:
+              type: string
+              example: flat
+          required:
+          - collateralType
+      required:
+      - personalInfo
+      - financialInfo
+      - collateralInfo
+    ScoringResponse:
+      type: object
+      properties:
+        score:
+          type: number
+          example: 150
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
+          example: error message
