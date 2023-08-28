@@ -29,7 +29,7 @@ deploy-test-env-job:
     - export sa_name=$(yc iam service-account get ${sa_id} --format=json | jq -r '.name')
     - export pname=testing-product
     - (cat ./product/yappa.yaml.j2 | envsubst) > ./product/yappa.yaml
-    - cd ./product/ && yappa deploy --description "created from gitlab CI" && cd ../
+    - cd ./product/ && yappa deploy && cd ../
 # Деплой функции для аутентификации
     - export token=${testing_auth_token}
     - (cat ./auth/function/params.json.j2 | envsubst) > ./auth/function/params.json
@@ -124,7 +124,7 @@ release-job:
     - export sa_name=$(yc iam service-account get ${sa_id} --format=json | jq -r '.name')
     - export pname=production-product
     - (cat ./product/yappa.yaml.j2 | envsubst) > ./product/yappa.yaml
-    - cd ./product/ && yappa deploy --description "created from gitlab CI" && cd ../
+    - cd ./product/ && yappa deploy && cd ../
 # Релиз функции для аутентификации
     - export token=${prod_auth_token}
     - (cat ./auth/function/params.json.j2 | envsubst) > ./auth/function/params.json
