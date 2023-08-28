@@ -22,7 +22,7 @@ deploy-test-env-job:
 # Установка переменных для развертывания API Gateway и создание контейнера.
     - export sa_id=$TESTING_SA_ID
 # Деплой через yappa-у Product-части
-    - pip3 install yappa -U
+    - pip install yappa -U
     - cp key.json ./product/.yc
     - export folder_id=$(yc resource-manager folder list --format=json | jq -r '.[].id')
     - export sa_name=$(yc iam service-account get ${sa_id} --format=json | jq -r '.name')
@@ -116,7 +116,7 @@ release-job:
 # Установка переменных для развертывания API Gateway и создание контейнера.
     - export sa_id=$PROD_SA_ID
 # Релиз через yappa-у Product-части
-    - pip3 install yappa -U
+    - pip install yappa -U
     - cp key.json ./product/.yc
     - export folder_id=$(yc resource-manager folder list --format=json | jq -r '.[].id')
     - export sa_name=$(yc iam service-account get ${sa_id} --format=json | jq -r '.name')
