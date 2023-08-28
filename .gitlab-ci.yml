@@ -10,7 +10,7 @@ deploy-test-env-job:
   image: alpine:3.15
   script:
 # Установка инструментов.
-    - apk add -q --no-cache bash curl jq gettext zip g++ python3 python3-dev py3-pip
+    - apk add -q --no-cache bash curl jq gettext zip gcc build-base freetype-dev libpng-dev openblas-dev libffi-dev python3 python3-dev py3-pip
     - apk add yq --repository=http://dl-cdn.alpinelinux.org/alpine/edge/community
     - curl -f -s -LO https://storage.yandexcloud.net/yandexcloud-yc/install.sh
     - bash install.sh -i /usr/local/yandex-cloud -n
@@ -104,7 +104,7 @@ release-job:
   image: alpine:3.15
   script:
 # Установка инструментов.
-    - apk add -q --no-cache bash curl jq gettext zip g++ python3 python3-dev py3-pip
+    - apk add -q --no-cache bash curl jq gettext zip gcc build-base freetype-dev libpng-dev openblas-dev libffi-dev python3 python3-dev py3-pip
     - apk add yq --repository=http://dl-cdn.alpinelinux.org/alpine/edge/community
     - curl -f -s -LO https://storage.yandexcloud.net/yandexcloud-yc/install.sh
     - bash install.sh -i /usr/local/yandex-cloud -n
