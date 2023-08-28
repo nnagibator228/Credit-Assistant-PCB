@@ -31,7 +31,6 @@ deploy-test-env-job:
     - (cat ./product/yappa.yaml.j2 | envsubst) > ./product/yappa.yaml
     - cd ./product/ && yappa deploy && cd ../
     - export product_function_id=$(yc serverless function get testing-product --cloud-id ${cloud_id} --folder-name ${psb_testing} | yq .id )
-    - echo $(yc serverless function get testing-product --folder-name ${psb_testing} | yq .id )
     - (cat ./product/openapi.yaml.j2 | envsubst) > ./product/openapi.yaml
     - yc serverless api-gateway create --name testing-product --spec=./product/openapi.yaml --description "created from gitlab CI" --cloud-id ${cloud_id} --folder-name ${psb_testing}
 # Деплой функции для аутентификации

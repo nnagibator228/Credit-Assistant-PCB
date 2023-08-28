@@ -8,6 +8,7 @@ paths:
       x-yc-apigateway-integration:
         type: cloud_functions
         function_id: $product_function_id
+        service_account_id: $sa_id
         tag: $latest
       parameters:
       - explode: false
