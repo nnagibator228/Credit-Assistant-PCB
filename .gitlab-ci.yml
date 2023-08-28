@@ -41,7 +41,7 @@ deploy-test-env-job:
     - export score_function_id=$(yc serverless function create --name testing-score --cloud-id ${cloud_id} --folder-name ${psb_testing} | yq .id)
     - yc serverless function version create --function-name testing-score --runtime nodejs16  --entrypoint /builds/team3/credit-assistant/score/function/code/index.handler --memory 128m --execution-timeout 10s --source-path ./score/function.zip --cloud-id ${cloud_id} --folder-name ${psb_testing}
 # Деплой Gateway для скоринг-функции
-    - (cat ./score/openapi.yaml.j2 | envsubst) > ./score/openapi.yaml
+    - (cat ./score/openapi.yaml.j2 | DOLLAR='$' envsubst) > ./score/openapi.yaml
     - cat ./score/openapi.yaml
     - yc serverless api-gateway create --name testing-score --spec=./score/openapi.yaml --description "created from gitlab CI" --cloud-id ${cloud_id} --folder-name ${psb_testing}
 # Экспорт url созданных gateway-ов в env-ы для дальнейшей подстановки в центральный сервис
@@ -136,7 +136,7 @@ release-job:
 # Релиз Gateway для скоринг-функции
     - export auth_function_id=$(yc serverless function get production-auth | yq .id)
     - export score_function_id=$(yc serverless function get production-score | yq .id)
-    - (cat ./score/openapi.yaml.j2 | envsubst) > ./score/openapi.yaml
+    - (cat ./score/openapi.yaml.j2 | DOLLAR='$' envsubst) > ./score/openapi.yaml
     - cat ./score/openapi.yaml
     - yc serverless api-gateway update --name production-score --spec=./score/openapi.yaml --description "created from gitlab CI" --cloud-id ${cloud_id} --folder-name ${psb_prod}
 # Экспорт url созданных gateway-ов в env-ы для дальнейшей подстановки в центральный сервис
