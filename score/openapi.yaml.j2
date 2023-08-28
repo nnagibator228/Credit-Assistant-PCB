@@ -16,13 +16,13 @@ paths:
           content:
             application/json:
               schema:
-                "\$ref": "#/components/schemas/ScoringResponse"
+                "\$\${q}ref": "#/components/schemas/ScoringResponse"
         '500':
           description: Internal error
           content:
             application/json:
               schema:
-                "\$ref": "#/components/schemas/Error"
+                "\$\${q}ref": "#/components/schemas/Error"
       x-yc-apigateway-integration:
         type: cloud_functions
         function_id: $score_function_id
@@ -35,7 +35,7 @@ paths:
         content:
           application/json:
             schema:
-              "\$ref": "#/components/schemas/ScoringRequest"
+              "\$\${q}ref": "#/components/schemas/ScoringRequest"
 components:
   securitySchemes:
     BearerAuth:
