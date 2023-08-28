@@ -145,7 +145,7 @@ release-job:
 # Релиз центральной функции.
     - (cat ${CI_PROJECT_DIR}/backend/function/params.json.j2 | envsubst) > ${CI_PROJECT_DIR}/backend/function/params.json
     - zip ./backend/function.zip -r ${CI_PROJECT_DIR}/backend/function
-    - yc serverless function version update --function-name production-main --runtime nodejs16  --entrypoint /builds/team3/credit-assistant/backend/function/code/index.handler --memory 128m --execution-timeout 10s --source-path ./backend/function.zip --cloud-id ${cloud_id} --folder-name ${psb_prod}
+    - yc serverless function version create --function-name production-main --runtime nodejs16  --entrypoint /builds/team3/credit-assistant/backend/function/code/index.handler --memory 128m --execution-timeout 10s --source-path ./backend/function.zip --cloud-id ${cloud_id} --folder-name ${psb_prod}
 # Релиз Gateway для центральной функции
     - export main_function_id=$(yc serverless function get production-main | yq .id)   
     - (cat ${CI_PROJECT_DIR}/backend/openapi.yaml.j2 | envsubst) > ./backend/openapi.yaml
