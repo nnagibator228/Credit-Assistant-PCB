@@ -74,6 +74,7 @@ function create_environment() {
     export PFOLDERNAME=psb-$ENV_NAME-$APP_ID
     yc serverless api-gateway create --name production-main --description "main endpoint" --spec=./sample/openapi.yaml --cloud-id $YC_CLOUD_ID --folder-name $PFOLDERNAME
     yc serverless api-gateway create --name production-score --description "score endpoint" --spec=./sample/openapi.yaml --cloud-id $YC_CLOUD_ID --folder-name $PFOLDERNAME
+    yc serverless api-gateway create --name production-product --description "score endpoint" --spec=./sample/openapi.yaml --cloud-id $YC_CLOUD_ID --folder-name $PFOLDERNAME    
     yc serverless function create --name production-main --cloud-id $YC_CLOUD_ID --folder-name $PFOLDERNAME
     yc serverless function create --name production-score --cloud-id $YC_CLOUD_ID --folder-name $PFOLDERNAME
     yc serverless function create --name production-auth --cloud-id $YC_CLOUD_ID --folder-name $PFOLDERNAME

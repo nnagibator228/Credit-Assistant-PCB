@@ -30,16 +30,21 @@ deploy-test-env-job:
     - export pname=testing-product
     - (cat ./product/yappa.yaml.j2 | envsubst) > ./product/yappa.yaml
     - cd ./product/ && yappa deploy && cd ../
+    - export product_function_id=$(yc serverless function get testing-product --folder-name ${psb_testing} | yq .id )
+    - (cat ./product/openapi.yaml.j2 | envsubst) > ./product/openapi.yaml
+    - yc serverless api-gateway create --name testing-product --spec=./product/openapi.yaml --description "created from gitlab CI" --cloud-id ${cloud_id} --folder-name ${psb_testing}
 # Деплой функции для аутентификации
     - export token=${testing_auth_token}
     - (cat ./auth/function/params.json.j2 | envsubst) > ./auth/function/params.json
     - zip ./auth/function.zip -r ./auth/function
-    - export auth_function_id=$(yc serverless function create --name testing-auth --cloud-id ${cloud_id} --folder-name ${psb_testing} | yq .id)
+    - yc serverless function create --name testing-auth --cloud-id ${cloud_id} --folder-name ${psb_testing} 
     - yc serverless function version create --function-name testing-auth --runtime nodejs16  --entrypoint /builds/team3/credit-assistant/auth/function/code/index.handler --memory 128m --execution-timeout 10s --source-path ./auth/function.zip --cloud-id ${cloud_id} --folder-name ${psb_testing}
+    - export auth_function_id=$(yc serverless function get testing-auth --folder-name ${psb_testing} | yq .id)
 # Деплой функции для подсчета скоринга
     - zip ./score/function.zip -r ./score/function
-    - export score_function_id=$(yc serverless function create --name testing-score --cloud-id ${cloud_id} --folder-name ${psb_testing} | yq .id)
+    - yc serverless function create --name testing-score --cloud-id ${cloud_id} --folder-name ${psb_testing}
     - yc serverless function version create --function-name testing-score --runtime nodejs16  --entrypoint /builds/team3/credit-assistant/score/function/code/index.handler --memory 128m --execution-timeout 10s --source-path ./score/function.zip --cloud-id ${cloud_id} --folder-name ${psb_testing}
+    - export score_function_id=$(yc serverless function get testing-score --folder-name ${psb_testing} | yq .id)
 # Деплой Gateway для скоринг-функции
     - (cat ./score/openapi.yaml.j2 | DOLLAR='$' envsubst) > ./score/openapi.yaml
     - cat ./score/openapi.yaml
@@ -125,6 +130,9 @@ release-job:
     - export pname=production-product
     - (cat ./product/yappa.yaml.j2 | envsubst) > ./product/yappa.yaml
     - cd ./product/ && yappa deploy && cd ../
+    - export product_function_id=$(yc serverless function get production-product --folder-name ${psb_prod} | yq .id )
+    - (cat ./product/openapi.yaml.j2 | envsubst) > ./product/openapi.yaml
+    - yc serverless api-gateway update --name production-product --spec=./product/openapi.yaml --description "created from gitlab CI" --cloud-id ${cloud_id} --folder-name ${psb_prod}
 # Релиз функции для аутентификации
     - export token=${prod_auth_token}
     - (cat ./auth/function/params.json.j2 | envsubst) > ./auth/function/params.json
