@@ -1,5 +1,5 @@
-const {getScoring} = require('./score');
-const {getProducts} = require('./products');
+const {getScoring} = require('./score.js');
+const {getProducts} = require('./products.js');
 
 module.exports.handler = async (event, ctx) => {
   const queryParams = event.queryStringParameters;
@@ -9,30 +9,28 @@ module.exports.handler = async (event, ctx) => {
   const scoring = await getScoring({
     personalInfo: {
       age,
-      experience
+      experience,
     },
     financialInfo: {
       monthlyCreditPayments,
       monthlyIncome,
-      openLoans
+      openLoans,
     },
     collateralInfo: {
-      collateralType: collateralType || 'flat'
+      collateralType: collateralType || 'flat',
     }
-  }).body;
-
-  console.error(scoring)
+  });
 
   const {type, min_percent, max_percent, max_sum, max_months} = queryParams;
 
-  const products = await getProducts(
+  const products = await getProducts({
     type,
     min_percent,
     max_percent,
     max_sum,
     max_months,
-    scoring
-  )
+    scoring: scoring.body
+  });
 
   return products
-}
+};

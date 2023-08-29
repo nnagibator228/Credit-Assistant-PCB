@@ -10,15 +10,17 @@ const getProducts = async (data) => {
       },
     });
 
+    console.log(response)
+
     return {
       statusCode: 200,
-      body: response.data.score,
+      body: response.data,
     };
   } catch (error) {
     console.log(error);
     return {
       statusCode: 500,
-      body: JSON.stringify({message: 'Something went wrong. Try again later'}),
+      body: error,
     };
   }
 }
