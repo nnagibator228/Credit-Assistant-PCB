@@ -105,10 +105,12 @@ paths:
           content:
             application/json:
               schema:
-                items:
-                  "${DOLLAR}ref": '#/components/schemas/Product'
-                title: Response Get Products Api Products Get
-                type: array
+                type: object
+                properties:
+                  statusCode:
+                    type: integer
+                  body:
+                    type: string
       x-yc-apigateway-integration:
         type: cloud_functions
         function_id: $main_function_id
