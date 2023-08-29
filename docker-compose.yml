@@ -19,7 +19,7 @@ services:
     image: jrcs/letsencrypt-nginx-proxy-companion
     restart: always
     environment:
-      - DEFAULT_EMAIL=${ACMEEMAIL}
+      - DEFAULT_EMAIL=acmeedit@gmail.com
       - NGINX_PROXY_CONTAINER=nginx-proxy
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
@@ -29,7 +29,7 @@ services:
       - ./data/html:/usr/share/nginx/html
 
   front:
-    image: plzdontcry/psbfront
+    image: plzdontcry/psb-front:latest
     environment:
       VIRTUAL_HOST: ${DOMAIN}
       VIRTUAL_PORT: 80

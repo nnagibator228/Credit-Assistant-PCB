@@ -156,7 +156,7 @@ release-job:
 # Релиз центральной функции.
     - (cat ./backend/function/params.json.j2 | envsubst) > ./backend/function/params.json
     - zip ./backend/function.zip -r ./backend/function
-    - yc serverless function version create --function-name production-main --runtime nodejs16  --entrypoint backend/function/index.handler --memory 128m --execution-timeout 10s --source-path ./backend/function.zip --cloud-id ${cloud_id} --folder-name ${psb_prod}
+    - yc serverless function version create --function-name production-main --runtime nodejs16  --entrypoint index.handler --memory 128m --execution-timeout 10s --source-path ./backend/function/ --cloud-id ${cloud_id} --folder-name ${psb_prod}
 # Релиз Gateway для центральной функции
     - export main_function_id=$(yc serverless function get production-main --cloud-id ${cloud_id} --folder-name ${psb_prod} | yq .id)   
     - (cat ./backend/openapi.yaml.j2 | envsubst) > ./backend/openapi.yaml

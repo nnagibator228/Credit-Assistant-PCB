@@ -38,18 +38,12 @@ export const Form = ({callbackForm, ...props}) => {
   const callbackPurpose = (value) => setPurpose(value)
 
   const confirm = () => {
-    const data = {"monthlyCreditPayments": payments,
-      "max_months": terms,
+    const data = {
+      "monthlyCreditPayments": payments,
       "age": age,
       "experience": exp,
       "monthlyIncome": income,
-      "collateralType": type,
-      "openLoans": cnt,
-      "dev": dev,
-      "military": military,
-      "pensioner": pensioner,
-      "max_sum": amount,
-      "purpose": purpose,}
+      "openLoans": cnt}
 
       callbackForm(data)
   }

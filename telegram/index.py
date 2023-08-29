@@ -1,67 +1,36 @@
-import requests
 import json
+from random import choice
 
-user_data = {}
+import requests
 
-TOKEN = "6594849810:AAGJD55hK7rGDJYQCUHXqQTli7PfgJ96hW4"
+from constant import questions, data_questions, data_buttons, list_emoji, url_send_message, url_get_data_products
 
 
+user_data:dict = {}
 
-questions = [
-    "Какой ваш возраст ?",
-    "Какой стаж работы ?",
-    "Какие у вас есть виды обеспечения по кредиту ?",
-    "Сумма ежемесячных платежей по действующим кредитам ?",
-    "Какой у вас сейчас доход ?",
-    "Количество действующих кредитов ?",
-    "Цель займа ?"
-]
-
-data_questions = [
-    "age",
-    "work_experience",
-    "collateral",
-    "indebtedness",
-    "income",
-    "number_of_credits",
-    "purpose_of_the_loan"
-]
-
-data_buttons = {
-    2: [["Машина"], ["Квартира"], ["Нет"]],
-    6: [["Машина"], ["Квартира"], ["Бизнес"]]
-}
-
-def is_valid_number(text):
-    return text.isdigit()
-
-def process_question(chat_id, user_id, user_first_name, text):
+def process_question(chat_id:str, user_id:str, user_first_name:str, text:str)->None:
     if user_id not in user_data:
-        user_data[user_id] = {'count_questions': 0, 'answers': {}}
+        user_data[user_id]:dict = {'count_questions': 0, 'answers': {}}
 
-    count_question = user_data[user_id]['count_questions']
+    count_question:int = user_data[user_id]['count_questions']
     if text.lower() == "/start":
         user_data[user_id]['count_questions'] = 0
         user_data[user_id]['count_questions'] += 1
         send_message(chat_id, f"Привет! {user_first_name} Добро пожаловать в нашего бота. Начнем опрос.", data_buttons.get(count_question))
         send_message(chat_id, questions[count_question], data_buttons.get(count_question))
     elif count_question <= len(questions):
-        if count_question in [3, 7]:
+        if text.isdigit():
             user_data[user_id]['answers'][data_questions[count_question - 1]] = text
             user_data[user_id]['count_questions'] += 1
             send_message(chat_id, questions[count_question], data_buttons.get(count_question))
         else:
-            if is_valid_number(text):
-                user_data[user_id]['answers'][data_questions[count_question - 1]] = text
-                user_data[user_id]['count_questions'] += 1
-                send_message(chat_id, questions[count_question], data_buttons.get(count_question))
-            else:
-                send_message(chat_id, "Пожалуйста, введите корректное число.")
+            send_message(chat_id, "Пожалуйста, введите корректное число.")
     else:
-        send_message(chat_id, "Спасибо за предоставленную информацию!")
+        send_message(chat_id, "Спасибо за предоставленную информацию! \nПопробуем попробуем подобрать лучшие условия для вас")
+        show_loans(chat_id,user_id)
 
-def handle_view_data(chat_id, user_id):
-    user_data = view_data(user_id)
+def handle_view_data(chat_id:str, user_id:str):
+    user_data:dict = view_data(user_id)
     send_message(chat_id,
         f"""
         Ваши данные: 
@@ -74,8 +43,7 @@ def view_data(user_id):
     else:
         return "Данные пользователя не найдены."
 
-def send_message(chat_id, text, buttons=None):
-    url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
+def send_message(chat_id:str, text:str, buttons:str=None)->json:
     if buttons:
         button_markup = {
             "keyboard": buttons,
@@ -86,16 +54,16 @@ def send_message(chat_id, text, buttons=None):
     else:
         data = {"chat_id": chat_id, "text": text}
     
-    response = requests.post(url, json=data)
+    response = requests.post(url_send_message, json=data)
     return response.json()
 
-def process_update(event):
-    update = json.loads(event['body'])
-    update_data = update['message']
-    chat_id = update_data['chat']['id']
-    user_id = update_data['from']['id']
-    user_first_name = update_data['from']['first_name']
-    text = update_data.get('text', '')
+def process_update(event:str)->None:
+    update:json = json.loads(event['body'])
+    update_data:json = update['message']
+    chat_id:str = update_data['chat']['id']
+    user_id:str = update_data['from']['id']
+    user_first_name:str = update_data['from']['first_name']
+    text:str = update_data.get('text', '')
 
     if text.lower() == "/view_data":
         handle_view_data(chat_id, user_id)
@@ -103,8 +71,15 @@ def process_update(event):
         process_question(chat_id, user_id, user_first_name, text)
     else:
         process_question(chat_id, user_id, user_first_name, text)
+        
+def show_loans(chat_id:str,user_id:str)->None:
+    data_loans:str = requests.get(url_get_data_products,params=user_data[user_id]["answers"])
+    loans_list:json = data_loans.json()
+    for loans in loans_list:
+        text = f"""{choice(list_emoji)}\nБанк : {loans["bank_name"]}\nНазвание : {loans["credit_name"]}\nМинимальный процент : {loans["min_percent"]}\nМаксимальная сумма займа : {loans["max_sum"]}\nКоличество месяцев : {loans["max_months"]}"""
+        send_message(chat_id,text,[])
 
-def webhook_handler(event, context):
+def webhook_handler(event:str, context:str)->json:
     process_update(event)
     return {
         "statusCode": 200,

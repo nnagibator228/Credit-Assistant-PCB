@@ -2,58 +2,113 @@ openapi: 3.0.0
 info:
   title: Your API
   version: 1.0.0
+components:
+  schemas:
+    Product:
+      properties:
+        adiitional_params:
+          title: Adiitional Params
+          type: string
+        bank_name:
+          title: Bank Name
+          type: string
+        credit_name:
+          title: Credit Name
+          type: string
+        id:
+          title: Id
+          type: integer
+        max_months:
+          title: Max Months
+          type: integer
+        max_precent:
+          title: Max Precent
+          type: number
+        max_sum:
+          title: Max Sum
+          type: number
+        min_percent:
+          title: Min Percent
+          type: number
+        min_scoring:
+          default: 0
+          title: Min Scoring
+          type: integer
+        type:
+          title: Type
+          type: string
+      required:
+      - bank_name
+      - min_percent
+      - max_precent
+      - max_sum
+      - type
+      title: Product
+      type: object
 paths:
   /data:
     get:
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                type:
-                  type: string
-                min_percent:
-                  type: number
-                max_percent:
-                  type: number
-                max_sum:
-                  type: number
-                max_months:
-                  type: integer
-                personalInfo:
-                  type: object
-                  properties:
-                    age:
-                      type: integer
-                    experience:
-                      type: integer
-                financialInfo:
-                  type: object
-                  properties:
-                    monthlyCreditPayments:
-                      type: number
-                    monthlyIncome:
-                      type: number
-                    openLoans:
-                      type: integer
-                collateralInfo:
-                  type: object
-                  properties:
-                    collateralType:
-                      type: string
+      parameters:
+      - in: query
+        name: type
+        schema:
+          type: string
+      - in: query
+        name: min_percent
+        schema:
+          type: number
+      - in: query
+        name: max_percent
+        schema:
+          type: number
+      - in: query
+        name: max_sum
+        schema:
+          type: number
+      - in: query
+        name: max_months
+        schema:
+          type: integer
+      - in: query
+        name: age
+        required: true
+        schema:
+          type: integer
+      - in: query
+        name: experience
+        required: true
+        schema:
+          type: integer
+      - in: query
+        name: monthlyCreditPayments
+        required: true
+        schema:
+          type: number
+      - in: query
+        name: monthlyIncome
+        required: true
+        schema:
+          type: number
+      - in: query
+        name: openLoans
+        required: true
+        schema:
+          type: integer
+      - in: query
+        name: collateralType
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: Success
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  statusCode:
-                    type: integer
-                  body:
-                    type: string
+                items:
+                  $ref: '#/components/schemas/Product'
+                title: Response Get Products Api Products Get
+                type: array
       x-yc-apigateway-integration:
         type: cloud_functions
         function_id: $main_function_id
