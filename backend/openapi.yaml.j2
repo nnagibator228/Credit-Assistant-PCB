@@ -1,47 +1,59 @@
-openapi: "3.0.2"
+openapi: 3.0.0
 info:
+  title: Your API
   version: 1.0.0
-  title: Bank API
 paths:
-  /hello:
+  /data:
     get:
-      summary: Say hello
-      operationId: hello
-      parameters:
-        - name: user
-          in: query
-          description: User name to appear in greetings
-          required: false
-          schema:
-            type: string
-            default: 'world'
-      responses:
-        '200':
-          description: Greeting
-          content:
-            'text/plain':
-              schema:
-                type: "string"
-      x-yc-apigateway-integration:
-        type: dummy
-        http_code: 200
-        http_headers:
-          'Content-Type': "text/plain"
+      requestBody:
         content:
-          'text/plain': "Hello again!!! {user}!\n"
-  /number:
-    get:
-      summary: List some numbers
-      operationId: listNumbers
+          application/json:
+            schema:
+              type: object
+              properties:
+                type:
+                  type: string
+                min_percent:
+                  type: number
+                max_percent:
+                  type: number
+                max_sum:
+                  type: number
+                max_months:
+                  type: integer
+                personalInfo:
+                  type: object
+                  properties:
+                    age:
+                      type: integer
+                    experience:
+                      type: integer
+                financialInfo:
+                  type: object
+                  properties:
+                    monthlyCreditPayments:
+                      type: number
+                    monthlyIncome:
+                      type: number
+                    openLoans:
+                      type: integer
+                collateralInfo:
+                  type: object
+                  properties:
+                    collateralType:
+                      type: string
       responses:
         '200':
-          description: Another example
+          description: Success
           content:
-            'application/json':
+            application/json:
               schema:
-                type: "array"
-                items:
-                  type: "integer"
+                type: object
+                properties:
+                  statusCode:
+                    type: integer
+                  body:
+                    type: string
       x-yc-apigateway-integration:
         type: cloud_functions
         function_id: $main_function_id

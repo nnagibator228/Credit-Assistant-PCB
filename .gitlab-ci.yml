@@ -58,7 +58,7 @@ deploy-test-env-job:
     - (cat ./backend/function/params.json.j2 | envsubst) > ./backend/function/params.json
     - zip ./backend/function.zip -r ./backend/function
     - export main_function_id=$(yc serverless function create --name testing-main --cloud-id ${cloud_id} --folder-name ${psb_testing} | yq .id)
-    - yc serverless function version create --function-name testing-main --runtime nodejs16  --entrypoint /builds/team3/credit-assistant/backend/function/code/index.handler --memory 128m --execution-timeout 10s --source-path ./backend/function.zip --cloud-id ${cloud_id} --folder-name ${psb_testing}
+    - yc serverless function version create --function-name testing-main --runtime nodejs16  --entrypoint backend/function/code/index.handler --memory 128m --execution-timeout 10s --source-path ./backend/function.zip --cloud-id ${cloud_id} --folder-name ${psb_testing}
 # Развертывание Gateway для центральной функции
     - (cat ./backend/openapi.yaml.j2 | envsubst) > ./backend/openapi.yaml
     - yc serverless api-gateway create --name testing-main --spec=./backend/openapi.yaml --description "created from gitlab CI" --cloud-id ${cloud_id} --folder-name ${psb_testing}
@@ -156,7 +156,7 @@ release-job:
 # Релиз центральной функции.
     - (cat ./backend/function/params.json.j2 | envsubst) > ./backend/function/params.json
     - zip ./backend/function.zip -r ./backend/function
-    - yc serverless function version create --function-name production-main --runtime nodejs16  --entrypoint /builds/team3/credit-assistant/backend/function/code/index.handler --memory 128m --execution-timeout 10s --source-path ./backend/function.zip --cloud-id ${cloud_id} --folder-name ${psb_prod}
+    - yc serverless function version create --function-name production-main --runtime nodejs16  --entrypoint backend/function/code/index.handler --memory 128m --execution-timeout 10s --source-path ./backend/function.zip --cloud-id ${cloud_id} --folder-name ${psb_prod}
 # Релиз Gateway для центральной функции
     - export main_function_id=$(yc serverless function get production-main --cloud-id ${cloud_id} --folder-name ${psb_prod} | yq .id)   
     - (cat ./backend/openapi.yaml.j2 | envsubst) > ./backend/openapi.yaml
