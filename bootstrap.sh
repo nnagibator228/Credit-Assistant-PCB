@@ -86,6 +86,7 @@ function create_environment() {
     export reserved_ip=$(yc vpc address list --cloud-id $YC_CLOUD_ID --folder-name $PFOLDERNAME | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+')
     export compute_id=$(run_yc compute instance create-with-container --name front-vm --zone ru-central1-a --container-image=plzdontcry/psb-front:latest --container-env GATEWAY_ID=$gateway_id --cloud-id $YC_CLOUD_ID --folder-name $PFOLDERNAME | yq .id)
     yc compute instance add-one-to-one-nat --id=$compute_id --nat-address=$reserved_ip --network-interface-index=0
+    GH_SECRETS="${GH_SECRETS}${NEWLINE}${NEWLINE}!!! NOTE $reserved_ip - thats your public front IP, Add a DNS rule to it or pass through a CDN (or do whatever u shoud with it). "
   fi
   GH_SECRETS="${GH_SECRETS}${NEWLINE}${NEWLINE}${ENV_NAME}_auth_token: ${generateToken} or place a random 16-symbol string of nums & letters. "
   echo "Complete... "
