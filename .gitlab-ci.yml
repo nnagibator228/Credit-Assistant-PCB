@@ -104,6 +104,7 @@ delete-test-env-job:
     - yc serverless function delete testing-product --cloud-id ${cloud_id} --folder-name ${psb_testing}
     - yc serverless function delete testing-score --cloud-id ${cloud_id} --folder-name ${psb_testing}
     - yc serverless function delete testing-main --cloud-id ${cloud_id} --folder-name ${psb_testing}
+    - yc serverless function delete testing-auth --cloud-id ${cloud_id} --folder-name ${psb_testing}
 
 release-job:
   stage: release
