@@ -25,7 +25,7 @@ deploy-test-env-job:
     - pip install setuptools_rust
     - CRYPTOGRAPHY_DONT_BUILD_RUST=1 pip install yappa -U
     - cp key.json ./product/.yc
-    - export folder_id=$(yc resource-manager folder list --format=json --cloud-id ${cloud_id} | jq -r '.[].id')
+    - export folder_id=$(yc resource-manager folder get ${psb_testing} --cloud-id ${cloud_id} | yq .id)
     - export sa_name=$(yc iam service-account get ${sa_id} --format=json | jq -r '.name')
     - export pname=testing-product
     - (cat ./product/yappa.yaml.j2 | envsubst) > ./product/yappa.yaml
@@ -126,7 +126,7 @@ release-job:
     - pip install setuptools_rust
     - CRYPTOGRAPHY_DONT_BUILD_RUST=1 pip install yappa -U
     - cp key.json ./product/.yc
-    - export folder_id=$(yc resource-manager folder list --format=json --cloud-id ${cloud_id} | jq -r '.[].id')
+    - export folder_id=$(yc resource-manager folder get ${psb_prod} --cloud-id ${cloud_id} | yq .id)
     - export sa_name=$(yc iam service-account get ${sa_id} --format=json | jq -r '.name')
     - export pname=production-product
     - (cat ./product/yappa.yaml.j2 | envsubst) > ./product/yappa.yaml
