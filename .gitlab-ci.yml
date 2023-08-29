@@ -38,12 +38,12 @@ deploy-test-env-job:
     - (cat ./auth/function/params.json.j2 | envsubst) > ./auth/function/params.json
     - zip ./auth/function.zip -r ./auth/function
     - yc serverless function create --name testing-auth --cloud-id ${cloud_id} --folder-name ${psb_testing} 
-    - yc serverless function version create --function-name testing-auth --runtime nodejs16  --entrypoint /builds/team3/credit-assistant/auth/function/code/index.handler --memory 128m --execution-timeout 10s --source-path ./auth/function.zip --cloud-id ${cloud_id} --folder-name ${psb_testing}
+    - yc serverless function version create --function-name testing-auth --runtime nodejs16  --entrypoint /auth/function/index.handler --memory 128m --execution-timeout 10s --source-path ./auth/function.zip --cloud-id ${cloud_id} --folder-name ${psb_testing}
     - export auth_function_id=$(yc serverless function get testing-auth --cloud-id ${cloud_id} --folder-name ${psb_testing} | yq .id)
 # Деплой функции для подсчета скоринга
     - zip ./score/function.zip -r ./score/function
     - yc serverless function create --name testing-score --cloud-id ${cloud_id} --folder-name ${psb_testing}
-    - yc serverless function version create --function-name testing-score --runtime nodejs16  --entrypoint /builds/team3/credit-assistant/score/function/code/index.handler --memory 128m --execution-timeout 10s --source-path ./score/function.zip --cloud-id ${cloud_id} --folder-name ${psb_testing}
+    - yc serverless function version create --function-name testing-score --runtime nodejs16  --entrypoint score/function/index.handler --memory 128m --execution-timeout 10s --source-path ./score/function.zip --cloud-id ${cloud_id} --folder-name ${psb_testing}
     - export score_function_id=$(yc serverless function get testing-score --cloud-id ${cloud_id} --folder-name ${psb_testing} | yq .id)
 # Деплой Gateway для скоринг-функции
     - (cat ./score/openapi.yaml.j2 | DOLLAR='$' envsubst) > ./score/openapi.yaml
@@ -138,10 +138,10 @@ release-job:
     - export token=${prod_auth_token}
     - (cat ./auth/function/params.json.j2 | envsubst) > ./auth/function/params.json
     - zip ./auth/function.zip -r ./auth/function
-    - yc serverless function version create --function-name production-auth --runtime nodejs16  --entrypoint /builds/team3/credit-assistant/auth/function/code/index.handler --memory 128m --execution-timeout 10s --source-path ./auth/function.zip --cloud-id ${cloud_id} --folder-name ${psb_prod}
+    - yc serverless function version create --function-name production-auth --runtime nodejs16  --entrypoint /auth/function/index.handler --memory 128m --execution-timeout 10s --source-path ./auth/function.zip --cloud-id ${cloud_id} --folder-name ${psb_prod}
 # Релиз функции для подсчета скоринга
     - zip ./score/function.zip -r ./score/function
-    - yc serverless function version create --function-name production-score --runtime nodejs16  --entrypoint /builds/team3/credit-assistant/score/function/code/index.handler --memory 128m --execution-timeout 10s --source-path ./score/function.zip --cloud-id ${cloud_id} --folder-name ${psb_prod}
+    - yc serverless function version create --function-name production-score --runtime nodejs16  --entrypoint score/function/index.handler --memory 128m --execution-timeout 10s --source-path ./score/function.zip --cloud-id ${cloud_id} --folder-name ${psb_prod}
 # Релиз Gateway для скоринг-функции
     - export auth_function_id=$(yc serverless function get production-auth --cloud-id ${cloud_id} --folder-name ${psb_prod} | yq .id)
     - export score_function_id=$(yc serverless function get production-score --cloud-id ${cloud_id} --folder-name ${psb_prod} | yq .id)
