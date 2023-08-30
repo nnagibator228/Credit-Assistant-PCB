@@ -15,8 +15,11 @@ if [ -z "$YC_CLOUD_ID" ]; then
   exit 1
 fi
 
-# Some of cloud entities must have unique name across user's cloud
-# So we use this id to avoid name conflicts
+if [ -z "$BOTTOKEN" ]; then
+  echo "Env variable BOTTOKEN is required" >&2
+  exit 1
+fi
+
 APP_ID=$(xxd -l 2 -c 2 -p </dev/random)
 
 TMP_DIR=$(mktemp -d)
@@ -72,21 +75,27 @@ function create_environment() {
   then
     echo "Creating Production Infrastructure"
     export PFOLDERNAME=psb-$ENV_NAME-$APP_ID
-    export gateway_id=$(run_yc  serverless api-gateway create --name production-main --description "main endpoint" --spec=./sample/openapi.yaml --cloud-id $YC_CLOUD_ID --folder-name $PFOLDERNAME)
+    yc serverless api-gateway create --name production-main --description "main endpoint" --spec=./sample/openapi.yaml --cloud-id $YC_CLOUD_ID --folder-name $PFOLDERNAME
+    export gateway_id=$(yc serverless api-gateway get --name production-main --cloud-id $YC_CLOUD_ID --folder-name $PFOLDERNAME | yq .id)
     yc serverless api-gateway create --name production-score --description "score endpoint" --spec=./sample/openapi.yaml --cloud-id $YC_CLOUD_ID --folder-name $PFOLDERNAME
     yc serverless api-gateway create --name production-product --description "score endpoint" --spec=./sample/openapi.yaml --cloud-id $YC_CLOUD_ID --folder-name $PFOLDERNAME    
     yc serverless function create --name production-main --cloud-id $YC_CLOUD_ID --folder-name $PFOLDERNAME
     yc serverless function create --name production-score --cloud-id $YC_CLOUD_ID --folder-name $PFOLDERNAME
     yc serverless function create --name production-auth --cloud-id $YC_CLOUD_ID --folder-name $PFOLDERNAME
     yc serverless function create --name production-bot --cloud-id $YC_CLOUD_ID --folder-name $PFOLDERNAME
-    yc serverless function version create --function-name production-bot --runtime python39 --entrypoint index.handler --memory 128m --execution-timeout 10s --source-path ./telegram/ --environment TOKEN_BOT=$BOTTOKEN,GATEWAY_ID=$gateway_id --folder-name $PFOLDERNAME --cloud-id $YC_CLOUD_ID
+    echo "Deploying Interfaces"
     yc vpc network create --name prod --folder-name $PFOLDERNAME
     yc vpc subnet create --name ru-central1-a --network-name prod --zone 'ru-central1-a' --range 172.18.0.0/24 --folder-name $PFOLDERNAME
     yc vpc address create --external-ipv4 zone=ru-central1-a --cloud-id $YC_CLOUD_ID --folder-name $PFOLDERNAME
     export reserved_ip=$(yc vpc address list --cloud-id $YC_CLOUD_ID --folder-name $PFOLDERNAME | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+')
-    export compute_id=$(run_yc compute instance create-with-container --name front-vm --zone ru-central1-a --container-image=plzdontcry/psb-front:latest --container-env GATEWAY_ID=$gateway_id --cloud-id $YC_CLOUD_ID --folder-name $PFOLDERNAME | yq .id)
+    yc compute instance create-with-container --name front-vm --zone ru-central1-a --container-image=plzdontcry/psb-front:amd64 --container-env REACT_APP_GATEWAY_ID=$gateway_id --cloud-id $YC_CLOUD_ID --folder-name $PFOLDERNAME
+    export compute_id=$(yc compute instance get --name front-vm --cloud-id $YC_CLOUD_ID --folder-name $PFOLDERNAME | yq .id)
+    yc serverless function version create --function-name production-bot --runtime python39 --entrypoint index.webhook_handler --memory 128m --execution-timeout 10s --source-path ./telegram/ --environment TOKEN_BOT=$BOTTOKEN,GATEWAY_ID=$gateway_id --folder-name $PFOLDERNAME --cloud-id $YC_CLOUD_ID
+    yc serverless function allow-unauthenticated-invoke --name production-bot --cloud-id $YC_CLOUD_ID --folder-name $PFOLDERNAME 
+    export invokeurl=$(yc serverless function get --name production-bot --cloud-id $YC_CLOUD_ID --folder-name $PFOLDERNAME | yq .http_invoke_url)
+    curl https://api.telegram.org/bot$BOTTOKEN/setWebhook?url=$invokeurl
     yc compute instance add-one-to-one-nat --id=$compute_id --nat-address=$reserved_ip --network-interface-index=0
-    GH_SECRETS="${GH_SECRETS}${NEWLINE}${NEWLINE}!!! NOTE $reserved_ip - thats your public front IP, Add a DNS rule to it or pass through a CDN (or do whatever u shoud with it). "
+    GH_SECRETS="${GH_SECRETS}${NEWLINE}${NEWLINE} > !!! NOTE $reserved_ip - thats your public front IP, Add a DNS rule to it or pass through a CDN (or do whatever u shoud with it). !!! "
   fi
   GH_SECRETS="${GH_SECRETS}${NEWLINE}${NEWLINE}${ENV_NAME}_auth_token: ${generateToken} or place a random 16-symbol string of nums & letters. "
   echo "Complete... "
@@ -95,4 +104,4 @@ function create_environment() {
 create_environment prod
 create_environment testing
 
-echo "Please, add following to your gitlab CI/CD variables (don't forget to uncgeck Protect variable checkbox for each of them):$GH_SECRETS"
+echo "Please, add following to your gitlab CI/CD variables (don't forget to uncheck Protect variable checkbox for each of them):$GH_SECRETS"

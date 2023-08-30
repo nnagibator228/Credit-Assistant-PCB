@@ -162,6 +162,7 @@ release-job:
     - (cat ./backend/openapi.yaml.j2 | envsubst) > ./backend/openapi.yaml
     - yc serverless api-gateway update --name production-main --spec=./backend/openapi.yaml --description "created from gitlab CI" --cloud-id ${cloud_id} --folder-name ${psb_prod}
 # Настройка шаблона и развертывание API Gateway.
-    - export finaldomain=$(yc serverless api-gateway get production-main --cloud-id ${cloud_id} --folder-name ${psb_prod} | yq .domain)
-    - echo "https://"$finaldomain
+    - export maingwid=$(yc serverless api-gateway get production-main --cloud-id ${cloud_id} --folder-name ${psb_prod} | yq .id)
+    - yc compute instance update-container --name front-vm --container-image=plzdontcry/psb-front:amd64 --container-env REACT_APP_GATEWAY_ID=$maingwid --cloud-id ${cloud_id} --folder-name ${psb_prod}
+
 # Создание продакшн среды.
