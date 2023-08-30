@@ -79,6 +79,7 @@ function create_environment() {
     export gateway_id=$(yc serverless api-gateway get --name production-main --cloud-id $YC_CLOUD_ID --folder-name $PFOLDERNAME | yq .id)
     yc serverless api-gateway create --name production-score --description "score endpoint" --spec=./sample/openapi.yaml --cloud-id $YC_CLOUD_ID --folder-name $PFOLDERNAME
     yc serverless api-gateway create --name production-product --description "score endpoint" --spec=./sample/openapi.yaml --cloud-id $YC_CLOUD_ID --folder-name $PFOLDERNAME    
+    yc serverless function create --name production-product --cloud-id $YC_CLOUD_ID --folder-name $PFOLDERNAME
     yc serverless function create --name production-main --cloud-id $YC_CLOUD_ID --folder-name $PFOLDERNAME
     yc serverless function create --name production-score --cloud-id $YC_CLOUD_ID --folder-name $PFOLDERNAME
     yc serverless function create --name production-auth --cloud-id $YC_CLOUD_ID --folder-name $PFOLDERNAME
@@ -88,7 +89,7 @@ function create_environment() {
     yc vpc subnet create --name ru-central1-a --network-name prod --zone 'ru-central1-a' --range 172.18.0.0/24 --folder-name $PFOLDERNAME
     yc vpc address create --external-ipv4 zone=ru-central1-a --cloud-id $YC_CLOUD_ID --folder-name $PFOLDERNAME
     export reserved_ip=$(yc vpc address list --cloud-id $YC_CLOUD_ID --folder-name $PFOLDERNAME | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+')
-    yc compute instance create-with-container --name front-vm --zone ru-central1-a --container-image=plzdontcry/psb-front:amd64 --container-env REACT_APP_GATEWAY_ID=$gateway_id --cloud-id $YC_CLOUD_ID --folder-name $PFOLDERNAME
+    yc compute instance create-with-container --name front-vm --zone ru-central1-a --container-image=plzdontcry/psb-front:amd64 --container-env REACT_APP_GATEWAY_ID=$gateway_id --container-tty --container-privileged --cloud-id $YC_CLOUD_ID --folder-name $PFOLDERNAME
     export compute_id=$(yc compute instance get --name front-vm --cloud-id $YC_CLOUD_ID --folder-name $PFOLDERNAME | yq .id)
     yc serverless function version create --function-name production-bot --runtime python39 --entrypoint index.webhook_handler --memory 128m --execution-timeout 10s --source-path ./telegram/ --environment TOKEN_BOT=$BOTTOKEN,GATEWAY_ID=$gateway_id --folder-name $PFOLDERNAME --cloud-id $YC_CLOUD_ID
     yc serverless function allow-unauthenticated-invoke --name production-bot --cloud-id $YC_CLOUD_ID --folder-name $PFOLDERNAME 
