@@ -23,8 +23,7 @@ YC_CLOUD_ID=<идентификатор облака> BOTTOKEN=<токен ва�
 
 ## Схема архитектуры
 
-![scheme]([./pictures/image.png](https://github.com/nnagibator228/Credit-Assistant-PCB/blob/main/docs/scheme.png)https://github.com/nnagibator228/Credit-Assistant-PCB/blob/main/docs/scheme.png)
-
+![scheme](https://github.com/nnagibator228/Credit-Assistant-PCB/blob/main/docs/scheme.png)
 ---
 
 *Code by @Letch49 @AkiiraBino @mazitovt - team besties* ✨
