@@ -21,6 +21,10 @@ YC_CLOUD_ID=<идентификатор облака> BOTTOKEN=<токен ва�
 
 Сопутствующая документация по проекту (в т.ч. UML-диаграмма, OpenAPI спецификации и т.д.) доступны в директории `doc/`
 
+## Схема архитектуры
+
+![scheme]([./pictures/image.png](https://github.com/nnagibator228/Credit-Assistant-PCB/blob/main/docs/scheme.png)https://github.com/nnagibator228/Credit-Assistant-PCB/blob/main/docs/scheme.png)
+
 ---
 
 *Code by @Letch49 @AkiiraBino @mazitovt - team besties* ✨
